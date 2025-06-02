@@ -8,7 +8,7 @@ const transactionSchema = new mongoose.Schema({
   convertedAmount: { type: Number, required: true },
 });
 
-const Transaction = mongoose.model('Transaction', transactionSchema);
+const Transaction = mongoose.model('demotransac', transactionSchema);
 
 export default Transaction;
 

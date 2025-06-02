@@ -180,23 +180,69 @@ export const insertTransaction = async (req, res) => {
 //     }
 // };
 
+// export const updateTransaction = async (req, res) => {
+//     try {
+//         const transactionId = req.params.id;
+//         if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+//             return res.status(400).json({ message: 'Invalid transaction ID' });
+//         }
+
+//         const updatedTransaction = await Transaction.findByIdAndUpdate(transactionId, req.body, { new: true });
+//         if (!updatedTransaction) {
+//             return res.status(404).json({ message: 'Transaction not found' });
+//         }
+
+//         res.status(200).json(updatedTransaction);
+//     } catch (error) {
+//         res.status(500).json({ message: error.message });
+//     }
+// };
 export const updateTransaction = async (req, res) => {
-    try {
-        const transactionId = req.params.id;
-        if (!mongoose.Types.ObjectId.isValid(transactionId)) {
-            return res.status(400).json({ message: 'Invalid transaction ID' });
-        }
-
-        const updatedTransaction = await Transaction.findByIdAndUpdate(transactionId, req.body, { new: true });
-        if (!updatedTransaction) {
-            return res.status(404).json({ message: 'Transaction not found' });
-        }
-
-        res.status(200).json(updatedTransaction);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+  try {
+    const transactionId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      return res.status(400).json({ message: 'Invalid transaction ID' });
     }
+
+    const existingTransaction = await Transaction.findById(transactionId);
+    if (!existingTransaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    const { amount, currency, date, description } = req.body;
+
+    // If amount or currency changed, recalculate convertedAmount
+    let convertedAmount = existingTransaction.convertedAmount;
+    let newAmount = amount ?? existingTransaction.amount;
+    let newCurrency = currency ?? existingTransaction.currency;
+
+    if (amount !== undefined || currency !== undefined) {
+      convertedAmount = await convertCurrencyToINR(newAmount, newCurrency);
+    }
+
+    // Parse date if provided
+    const parsedDate = date ? moment(date, 'DD-MM-YYYY').toDate() : existingTransaction.date;
+
+    const updatedData = {
+      date: parsedDate,
+      description: description ?? existingTransaction.description,
+      amount: newAmount,
+      currency: newCurrency,
+      convertedAmount,
+    };
+
+    const updatedTransaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      updatedData,
+      { new: true }
+    );
+
+    res.status(200).json(updatedTransaction);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+
 
 export const deleteTransaction = async (req, res) => {
     try {
